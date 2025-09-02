@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered To Do List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI-Powered To Do List</h1>
+            <p class="subtitle">Manage your tasks with natural language commands</p>
+        </header>
+        
+        <div class="input-section">
+            <input type="text" id="task-input" placeholder="Enter a new task...">
+            <button id="add-btn">Add Task</button>
+        </div>
+        
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+        
+        <div class="tasks-section" id="tasks-container">
+            <div class="empty-state">
+                <h3>No tasks yet</h3>
+                <p>Add a task using the input above or try the AI assistant!</p>
+            </div>
+        </div>
+        
+        <div class="chat-toggle" id="chat-toggle">
+            <span>Chat with AI Assistant</span>
+        </div>
+        
+        <div class="chat-container" id="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message ai-message">
+                    Hello! I'm your AI task assistant. You can ask me to add, view, complete, or delete tasks.
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chat-input" placeholder="Ask me to add, view, complete, or delete tasks...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const taskInput = document.getElementById('task-input');
+        const addBtn = document.getElementById('add-btn');
+        const tasksContainer = document.getElementById('tasks-container');
+        const chatToggle = document.getElementById('chat-toggle');
+        const chatContainer = document.getElementById('chat-container');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const loadingIndicator = document.querySelector('.loading');
+        const emptyState = document.querySelector('.empty-state');
+        
+        // API base URL - in a real app, this would point to your Flask backend
+        // For this demo, we'll simulate the backend functionality
+        const API_BASE = 'http://localhost:5000/api';
+        
+        // Toggle chat visibility
+        chatToggle.addEventListener('click', () => {
+            chatContainer.style.display = chatContainer.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        // Load tasks when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // For demo purposes, let's add some sample tasks
+            setTimeout(loadTasks, 1000);
+        });
+        
+        // Add task event listener
+        addBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+        
+        // Send chat message event listener
+        sendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+        
+        // Function to show loading state
+        function showLoading() {
+            loadingIndicator.style.display = 'block';
+            emptyState.style.display = 'none';
+        }
+        
+        // Function to hide loading state
+        function hideLoading() {
+            loadingIndicator.style.display = 'none';
+        }
+        
+        // Function to load tasks from the backend
+        async function loadTasks() {
+            showLoading();
+            
+            try {
+                // In a real app, this would fetch from the Flask backend
+                // For demo, we'll use a simulated response
+                const response = await simulateAPICall('GET', `${API_BASE}/tasks`);
+                const tasks = response;
+                
+                tasksContainer.innerHTML = '';
+                
+                if (tasks.length === 0) {
+                    emptyState.style.display = 'block';
+                    hideLoading();
+                    return;
+                }
+                
+                emptyState.style.display = 'none';
+                
+                tasks.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.className = `task ${task.completed ? 'completed' : ''}`;
+                    taskElement.innerHTML = `
+                        <div class="task-content">
+                            ${task.description}
+                            <div class="task-id">ID: ${task.id}</div>
+                        </div>
+                        <div class="task-actions">
+                            ${!task.completed ? 
+                                `<button class="complete-btn" onclick="completeTask(${task.id})">Complete</button>` : ''}
+                            <button class="delete-btn" onclick="deleteTask(${task.id})">Delete</button>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(taskElement);
+                });
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                addChatMessage('Sorry, I encountered an error loading your tasks.', 'ai');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Function to add a new task
+        async function addTask() {
+            const description = taskInput.value.trim();
+            
+            if (!description) return;
+            
+            showLoading();
+            
+            try {
+                // In a real app, this would call the Flask backend
+                const response = await simulateAPICall('POST', `${API_BASE}/tasks`, { description });
+                
+                if (response.id) {
+                    taskInput.value = '';
+                    addChatMessage(`Added task: "${description}"`, 'ai');
+                    loadTasks();
+                }
+            } catch (error) {
+                console.error('Error adding task:', error);
+                addChatMessage('Sorry, I encountered an error adding your task.', 'ai');
+            }
+        }
+        
+        // Function to complete a task
+        async function completeTask(id) {
+            showLoading();
+            
+            try {
+                // In a real app, this would call the Flask backend
+                const response = await simulateAPICall('PUT', `${API_BASE}/tasks/${id}/complete`);
+                
+                if (response.id) {
+                    addChatMessage(`Completed task ${id}`, 'ai');
+                    loadTasks();
+                }
+            } catch (error) {
+                console.error('Error completing task:', error);
+                addChatMessage('Sorry, I encountered an error completing your task.', 'ai');
+            }
+        }
+        
+        // Function to delete a task
+        async function deleteTask(id) {
+            showLoading();
+            
+            try {
+                // In a real app, this would call the Flask backend
+                const response = await simulateAPICall('DELETE', `${API_BASE}/tasks/${id}`);
+                
+                if (response.message) {
+                    addChatMessage(`Deleted task ${id}`, 'ai');
+                    loadTasks();
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                addChatMessage('Sorry, I encountered an error deleting your task.', 'ai');
+            }
+        }
+        
+        // Function to send chat message and process AI response
+        async function sendChatMessage() {
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat
+            addChatMessage(message, 'user');
+            chatInput.value = '';
+            
+            showLoading();
+            
+            try {
+                // Process the AI response
+                const aiResponse = await processAICommand(message);
+                
+                // Add AI message to chat
+                addChatMessage(aiResponse.message, 'ai');
+                
+                // If the AI performed an action, reload tasks
+                if (aiResponse.actionPerformed) {
+                    loadTasks();
+                } else {
+                    hideLoading();
+                }
+            } catch (error) {
+                console.error('Error processing chat message:', error);
+                addChatMessage('Sorry, I encountered an error processing your request.', 'ai');
+                hideLoading();
+            }
+        }
+        
+        // Function to add a message to the chat
+        function addChatMessage(message, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${sender}-message`;
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Function to simulate API calls (would be replaced with actual fetch calls)
+        async function simulateAPICall(method, url, data = null) {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // For demo purposes, we'll simulate a backend with localStorage
+            if (url === `${API_BASE}/tasks`) {
+                if (method === 'GET') {
+                    // Get tasks from localStorage
+                    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    return tasks;
+                } else if (method === 'POST') {
+                    // Create a new task
+                    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    const newId = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+                    const newTask = {
+                        id: newId,
+                        description: data.description,
+                        completed: false
+                    };
+                    tasks.push(newTask);
+                    localStorage.setItem('tasks', JSON.stringify(tasks));
+                    return newTask;
+                }
+            } else if (url.startsWith(`${API_BASE}/tasks/`) && url.endsWith('/complete')) {
+                // Complete a task
+                const taskId = parseInt(url.split('/').slice(-2)[0]);
+                const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                const taskIndex = tasks.findIndex(t => t.id === taskId);
+                
+                if (taskIndex !== -1) {
+                    tasks[taskIndex].completed = true;
+                    localStorage.setItem('tasks', JSON.stringify(tasks));
+                    return tasks[taskIndex];
+                } else {
+                    throw new Error('Task not found');
+                }
+            } else if (url.startsWith(`${API_BASE}/tasks/`)) {
+                // Delete a task
+                const taskId = parseInt(url.split('/').pop());
+                let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                const taskIndex = tasks.findIndex(t => t.id === taskId);
+                
+                if (taskIndex !== -1) {
+                    tasks = tasks.filter(t => t.id !== taskId);
+                    localStorage.setItem('tasks', JSON.stringify(tasks));
+                    return { message: 'Task deleted' };
+                } else {
+                    throw new Error('Task not found');
+                }
+            }
+            
+            throw new Error('API endpoint not found');
+        }
+        
+        // Function to process AI commands
+        async function processAICommand(message) {
+            // This function would normally call an AI API, but for this demo we'll simulate it
+            const lowerMessage = message.toLowerCase();
+            
+            // Simulate API call delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (lowerMessage.includes('add') || lowerMessage.includes('create') || lowerMessage.includes('new')) {
+                // Extract task description
+                const description = extractTaskDescription(message);
+                
+                if (description) {
+                    // Call the API to add task
+                    const response = await simulateAPICall('POST', `${API_BASE}/tasks`, { description });
+                    
+                    if (response.id) {
+                        return {
+                            message: `I've added "${description}" to your task list.`,
+                            actionPerformed: true
+                        };
+                    }
+                }
+                
+                return {
+                    message: "I couldn't add that task. Please make sure to specify what task you'd like to add.",
+                    actionPerformed: false
+                };
+            }
+            else if (lowerMessage.includes('view') || lowerMessage.includes('show') || 
+                     lowerMessage.includes('list') || lowerMessage.includes('what')) {
+                // Call the API to get tasks
+                const tasks = await simulateAPICall('GET', `${API_BASE}/tasks`);
+                
+                if (tasks.length === 0) {
+                    return {
+                        message: "You don't have any tasks yet.",
+                        actionPerformed: false
+                    };
+                }
+                
+                let taskList = "Here are your tasks:\n";
+                tasks.forEach(task => {
+                    taskList += `- ${task.description} ${task.completed ? '(completed)' : ''}\n`;
+                });
+                
+                return {
+                    message: taskList,
+                    actionPerformed: false
+                };
+            }
+            else if (lowerMessage.includes('complete') || lowerMessage.includes('done') || 
+                     lowerMessage.includes('finish')) {
+                // Extract task ID
+                const taskId = extractTaskId(message, await simulateAPICall('GET', `${API_BASE}/tasks`));
+                
+                if (taskId) {
+                    // Call the API to complete task
+                    const response = await simulateAPICall('PUT', `${API_BASE}/tasks/${taskId}/complete`);
+                    
+                    if (response.id) {
+                        return {
+                            message: `I've marked task ${taskId} as complete.`,
+                            actionPerformed: true
+                        };
+                    }
+                }
+                
+                return {
+                    message: "I couldn't complete that task. Please specify which task you'd like to complete.",
+                    actionPerformed: false
+                };
+            }
+            else if (lowerMessage.includes('delete') || lowerMessage.includes('remove')) {
+                // Extract task ID
+                const taskId = extractTaskId(message, await simulateAPICall('GET', `${API_BASE}/tasks`));
+                
+                if (taskId) {
+                    // Call the API to delete task
+                    const response = await simulateAPICall('DELETE', `${API_BASE}/tasks/${taskId}`);
+                    
+                    if (response.message) {
+                        return {
+                            message: `I've deleted task ${taskId}.`,
+                            actionPerformed: true
+                        };
+                    }
+                }
+                
+                return {
+                    message: "I couldn't delete that task. Please specify which task you'd like to delete.",
+                    actionPerformed: false
+                };
+            }
+            else {
+                return {
+                    message: "I can help you manage your tasks. You can ask me to add, view, complete, or delete tasks.",
+                    actionPerformed: false
+                };
+            }
+        }
+        
+        // Helper function to extract task description from message
+        function extractTaskDescription(message) {
+            // Simple extraction logic - in a real AI system this would be more sophisticated
+            const addKeywords = ['add', 'create', 'new', 'insert', 'make'];
+            let description = message;
+            
+            for (const keyword of addKeywords) {
+                if (message.toLowerCase().includes(keyword)) {
+                    description = message.substring(message.toLowerCase().indexOf(keyword) + keyword.length).trim();
+                    // Remove any trailing punctuation
+                    description = description.replace(/[.,;!?]*$/, '');
+                    break;
+                }
+            }
+            
+            // Remove any quotes around the task
+            description = description.replace(/^["']|["']$/g, '');
+            
+            return description || message;
+        }
+        
+        // Helper function to extract task ID from message
+        function extractTaskId(message, tasks) {
+            // Try to find by number reference
+            const numMatch = message.match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0]);
+                // Check if this is a valid task ID
+                if (tasks.some(task => task.id === num)) {
+                    return num;
+                }
+            }
+            
+            // Try to find by text reference (first, second, last, etc.)
+            if (message.toLowerCase().includes('first')) {
+                if (tasks.length > 0) return tasks[0].id;
+            } else if (message.toLowerCase().includes('second') && tasks.length >= 2) {
+                return tasks[1].id;
+            } else if (message.toLowerCase().includes('last') && tasks.length > 0) {
+                return tasks[tasks.length - 1].id;
+            }
+            
+            return null;
+        }
+        
+        // Initialize with some sample tasks if none exist
+        if (!localStorage.getItem('tasks')) {
+            localStorage.setItem('tasks', JSON.stringify([
+                { id: 1, description: 'Learn about AI-powered task management', completed: false },
+                { id: 2, description: 'Build a portfolio project', completed: true },
+                { id: 3, description: 'Prepare for the final challenge', completed: false }
+            ]));
+        }
+    </script>
+</body>
+</html>
